@@ -9,7 +9,9 @@ It provides reusable, multi-job structural skeletons (**GitHub Reusable Workflow
 ---
 
 ## Automated Synchronization
-This repository is maintained on GitLab and automatically synchronized to GitHub using a mirror engine. **Do not commit changes directly to GitHub;** all updates must be made in the primary upstream GitLab repository.
+This repository is maintained on GitLab and automatically synchronized to GitHub using a mirror engine.
+⚠️ **Do not commit changes directly to GitHub;** all updates must be made in the primary upstream GitLab repository.
+Updates directly to GitHub will be wiped by this sync process.
 
 ---
 

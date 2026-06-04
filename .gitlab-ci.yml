@@ -8,3 +8,4 @@ include:
       target_url: ssh://git@github.com/k-int/github-actions.git
       branches:
         - main
+      additional_push_opts: "--force" # This is DESTRUCTIVE, github WILL be overwritten
