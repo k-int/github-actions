@@ -44,7 +44,7 @@ jobs:
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Generate SBOM Data
-        uses: ./central-scripts/actions/sbom-generation/gradle-syft-bom
+        uses: ./central-scripts/actions/sbom-generation/gradle-syft-sbom
         with:
           gradle_project_path: ${{ inputs.gradle_project_path }}
           syft_args: ${{ inputs.syft_args }}
