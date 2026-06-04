@@ -44,13 +44,13 @@ jobs:
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Generate SBOM Data
-        uses: ./central-scripts/actions/security/gradle-syft-generate
+        uses: ./central-scripts/actions/sbom-generation/gradle-syft-bom
         with:
           gradle_project_path: ${{ inputs.gradle_project_path }}
           syft_args: ${{ inputs.syft_args }}
 
       - name: Upload and Sync BOM
-        uses: ./central-scripts/actions/security/gradle-syft-push
+        uses: ./central-scripts/actions/sbom-generation/commit-sbom-files
         with:
           tracked_files: ${{ inputs.tracked_files }}
           commit_lockfiles: ${{ inputs.commit_lockfiles }}
