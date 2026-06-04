@@ -10,11 +10,11 @@ As a DevOps engineer working here, you are composing **GitHub Reusable Workflows
 
 When introducing a new workflow or automation requirement, map your strategy against our three core design patterns:
 
-| Pattern | Where Logic Lives | Best Used For | Visual UI Graph? | Individual Retries? |
-| :--- | :--- | :--- | :--- | :--- |
-| **A. Privatized Multi-Job Graph** | `external-github-actions-scripts` (GitLab) | Proprietary, business-sensitive, multi-stage build/test/deploy logic. | **Yes** (Full DAG) | **Yes** (Per Job) |
-| **B. Native Public Actions** | Directly in this repository under `.github/actions/` | Generic utilities, lint rules, open-source wrappers, non-sensitive tasks. | No (Single block) | No (All-or-nothing) |
-| **C. Inlined Script Orchestration** | Raw execution steps within a single master job | Lightweight pipelines, execution sequences that don't need granular UI tracking. | No (Single card) | No (All-or-nothing) |
+| Pattern                             | Where Logic Lives                                    | Best Used For                                                                    | Visual UI Graph?   | Individual Retries? |
+|:------------------------------------|:-----------------------------------------------------|:---------------------------------------------------------------------------------|:-------------------|:--------------------|
+| **A. Privatized Multi-Job Graph**   | `external-github-actions-scripts` (GitLab)           | Proprietary, business-sensitive, multi-stage build/test/deploy logic.            | **Yes** (Full DAG) | **Yes** (Per Job)   |
+| **B. Native Public Actions**        | Directly in this repository under `.github/actions/` | Generic utilities, lint rules, open-source wrappers, non-sensitive tasks.        | No (Single block)  | No (All-or-nothing) |
+| **C. Inlined Script Orchestration** | Raw execution steps within a single master job       | Lightweight pipelines, execution sequences that don't need granular UI tracking. | No (Single card)   | No (All-or-nothing) |
 
 ---
 

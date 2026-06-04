@@ -1,0 +1,56 @@
+name: Centralized Gradle SBOM Generation
+
+on:
+  workflow_call:
+    inputs:
+      gradle_project_path:
+        type: string
+        required: false
+        default: '.'
+      syft_args:
+        type: string
+        required: false
+        default: ''
+      tracked_files:
+        type: string
+        required: false
+        default: 'cdx-bom.json'
+      commit_lockfiles:
+        type: string
+        required: false
+        default: 'false'
+    secrets:
+      GITLAB_DEPLOY_USER:
+        required: true
+      GITLAB_DEPLOY_TOKEN:
+        required: true
+
+jobs:
+  execute-pipeline:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Application Repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: true
+
+      - name: Initialize action scripts
+        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+        with:
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+
+      - name: Generate SBOM Data
+        uses: ./central-scripts/actions/security/gradle-syft-generate
+        with:
+          gradle_project_path: ${{ inputs.gradle_project_path }}
+          syft_args: ${{ inputs.syft_args }}
+
+      - name: Upload and Sync BOM
+        uses: ./central-scripts/actions/security/gradle-syft-push
+        with:
+          tracked_files: ${{ inputs.tracked_files }}
+          commit_lockfiles: ${{ inputs.commit_lockfiles }}
