@@ -1,0 +1,49 @@
+name: Hello World Example Action
+
+on:
+  push:
+  workflow_call: # Exposes this multi-job setup to target application repositories
+
+jobs:
+  # ------------------------------------------------------------------
+  # JOB 1: Run Task Hello
+  # ------------------------------------------------------------------
+  job-hello:
+    name: Echo Hello Task
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Core Logic from GitLab
+        run: |
+          git clone https://${{ secrets.GITLAB_DEPLOY_USER }}:${{ secrets.GITLAB_DEPLOY_TOKEN }}@gitlab.com/knowledge-integration/pipeline-utils/github-actions/external-github-action-scripts.git central-scripts
+
+      - name: Execute Echo Hello Action
+        uses: ./central-scripts/actions/hello-world/echo-hello
+
+  # ------------------------------------------------------------------
+  # JOB 2: Run Task World
+  # ------------------------------------------------------------------
+  job-world:
+    name: Echo World Task
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Core Logic from GitLab
+        run: |
+          git clone https://${{ secrets.GITLAB_DEPLOY_USER }}:${{ secrets.GITLAB_DEPLOY_TOKEN }}@gitlab.com/knowledge-integration/pipeline-utils/github-actions/external-github-action-scripts.git central-scripts
+
+      - name: Execute Echo World Action
+        uses: ./central-scripts/actions/hello-world/echo-world
+
+  # ------------------------------------------------------------------
+  # JOB 3: Dependent Combine Runner (Retriable on failure!)
+  # ------------------------------------------------------------------
+  job-combine:
+    name: Combine Artifacts Task
+    runs-on: ubuntu-latest
+    needs: [job-hello, job-world] # <--- Forces the visual DAG graph connection
+    steps:
+      - name: Fetch Core Logic from GitLab
+        run: |
+          git clone https://${{ secrets.GITLAB_DEPLOY_USER }}:${{ secrets.GITLAB_DEPLOY_TOKEN }}@gitlab.com/knowledge-integration/pipeline-utils/github-actions/external-github-action-scripts.git central-scripts
+
+      - name: Execute Combine Action
+        uses: ./central-scripts/actions/hello-world/combine
