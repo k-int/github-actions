@@ -9,3 +9,9 @@ include:
       branches:
         - main
       additional_push_opts: "--force" # This is DESTRUCTIVE, github WILL be overwritten
+
+# Override the component's underlying job to target your runner
+branch-sync:
+  stage: synchronisation
+  tags:
+    - ki-onprem
