@@ -1,0 +1,8 @@
+include:
+  # Automatically mirrors the structural templates to GitHub on push
+  - component: $CI_SERVER_FQDN/knowledge-integration/pipeline-utils/gitlab-components/git-sync/branch-sync@~latest
+    inputs:
+      ssh_key: "${SSH_KEY_VAR}"
+      target_url: ssh://git@github.com/k-int/github-actions.git
+      branches:
+        - main
