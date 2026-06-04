@@ -1,0 +1,10 @@
+name: 'Clone Core Vault Helper'
+description: 'Secures and abstracts the private clone logic'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Fetch Core Logic (Shallow Clone)
+      shell: bash
+      run: |
+        git clone --depth 1 --single-branch --branch main https://${{ secrets.GITLAB_DEPLOY_USER }}:${{ secrets.GITLAB_DEPLOY_TOKEN }}@gitlab.com/knowledge-integration/pipeline-utils/github-actions/external-github-action-scripts.git central-scripts
