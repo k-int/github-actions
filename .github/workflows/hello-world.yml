@@ -1,7 +1,6 @@
 name: Hello World Example Action
 
 on:
-  push:
   workflow_call: # Exposes this multi-job setup to target application repositories
     secrets:
       GITLAB_DEPLOY_USER:
