@@ -16,6 +16,9 @@ jobs:
     steps:
       - name: Initialize action scripts
         uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+        with:
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Execute Echo Hello Action
         uses: ./central-scripts/actions/hello-world/echo-hello
@@ -27,6 +30,9 @@ jobs:
     steps:
       - name: Initialize action scripts
         uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+        with:
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Execute Echo World Action
         uses: ./central-scripts/actions/hello-world/echo-world
@@ -39,6 +45,9 @@ jobs:
     steps:
       - name: Initialize action scripts
         uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+        with:
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Execute Combine Action
         uses: ./central-scripts/actions/hello-world/combine

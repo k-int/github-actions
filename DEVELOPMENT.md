@@ -37,7 +37,10 @@ jobs:
     steps:
       - name: Initialize Vault Scripts
         uses: k-int/github-actions/.github/actions/clone-action-scripts@main # <-- MUST use absolute path
-        
+        with:
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+
       - name: Execute Secret Task
         uses: ./central-scripts/actions/domain/my-step
 
@@ -104,6 +107,9 @@ jobs:
     steps:
       - name: Pull Private Logic Layer
         uses: k-int/github-actions/.github/actions/clone-action-scripts@main # <-- Clones once here
+        with:
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Run Sequential Step A
         uses: ./central-scripts/actions/hello-world/echo-hello
