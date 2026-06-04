@@ -2,9 +2,9 @@
 
 This repository serves as the centralized orchestration hub for DevOps, security, and build workflows executed across our organization's GitHub repositories. 
 
-It provides reusable, multi-job structural skeletons (**GitHub Reusable Workflows**) that render job graphs, isolate environments, and grants granular job-level retries inside the GitHub Actions UI.
+It provides reusable, multi-job structural skeletons (**GitHub Reusable Workflows**) that render native dependency graphs (DAGs), isolated environments, and granular job-level retry capabilities inside the GitHub Actions UI.
 
-⚠️ **SECURITY NOTICE:** This repository contains **zero proprietary logic, scripts, or business code**. It contains only structural framework files. Most actual processing code remains securely locked behind our private GitLab instance and is fetched dynamically into volatile runner environments at runtime.
+⚠️ **SECURITY NOTICE:** This repository contains **zero proprietary logic, scripts, or business code**. It contains only structural framework files. The actual processing code remains securely locked behind our private GitLab instance and is fetched dynamically into volatile runner environments at runtime.
 
 ---
 
@@ -57,7 +57,7 @@ on:
 jobs:
   # This single block calls the central structural blueprint
   core-pipeline:
-    uses: k-int/github-actions/.github/workflows/hello-world-ui.yml@main
+    uses: k-int/github-actions/.github/workflows/hello-world.yml@main
     
     # Explicitly pass down the GITLAB_DEPLOY secrets to cross the organization boundary
     secrets:

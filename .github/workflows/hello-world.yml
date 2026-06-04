@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Initialize action scripts
-        uses: ./.github/actions/clone-action-scripts
+        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
 
       - name: Execute Echo Hello Action
         uses: ./central-scripts/actions/hello-world/echo-hello
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Initialize action scripts
-        uses: ./.github/actions/clone-action-scripts
+        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
 
       - name: Execute Echo World Action
         uses: ./central-scripts/actions/hello-world/echo-world
@@ -38,7 +38,7 @@ jobs:
     needs: [job-hello, job-world]
     steps:
       - name: Initialize action scripts
-        uses: ./.github/actions/clone-action-scripts
+        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
 
       - name: Execute Combine Action
         uses: ./central-scripts/actions/hello-world/combine

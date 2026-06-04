@@ -20,46 +20,26 @@ When introducing a new workflow or automation requirement, map your strategy aga
 
 ## Pattern A: Writing a Privatized Multi-Job Graph
 
-Use this pattern if your execution code contains proprietary information *and* you want the full **visual dashboard experience** with step-level failure retries on GitHub.
+Use this pattern if your execution code contains proprietary information *and* you want the full **FOLIO-style visual dashboard experience** with step-level failure retries on GitHub.
 
 ### 1. The Core Logic (On GitLab Vault Repo)
 Write your isolated composite steps inside `external-github-actions-scripts` under an intuitive domain path (e.g., `actions/domain/my-step/action.yml`).
 
 ### 2. The Blueprint Orchestrator (In this Repo)
-Create your reusable workflow under `.github/workflows/your-pipeline.yml`. You **must** utilize the `clone-action-scripts` helper step at the beginning of *every independent job* to pull the private logic into that runner's memory safely. Global secrets are inherited natively by the helper.
+Create your reusable workflow under `.github/workflows/your-pipeline.yml`. You **must** utilize our DRY `clone-action-scripts` helper step at the beginning of *every independent job* to pull the private logic into that runner's memory safely.
+
+> 🚨 **CRITICAL DEVELOPMENT RULE:** You **cannot** reference the clone helper using a relative path like `uses: ./.github/actions/clone-action-scripts` inside a reusable workflow. It will evaluate relative to the *caller application workspace* and break. You **must** use its full canonical path:
 
 ```yaml
-name: Shared Reusable Pipeline
-
-on:
-  workflow_call:
-    secrets:
-      GITLAB_DEPLOY_USER:
-        required: true
-      GITLAB_DEPLOY_TOKEN:
-        required: true
-
 jobs:
   job-stage-one:
     runs-on: ubuntu-latest
     steps:
       - name: Initialize Vault Scripts
-        uses: ./.github/actions/clone-action-scripts # <-- Injects secret context automatically
-
-        # The clone-action-scripts creates a directory called central-scripts
-        # within which the individual scripts can be accessed
+        uses: k-int/github-actions/.github/actions/clone-action-scripts@main # <-- MUST use absolute path
+        
       - name: Execute Secret Task
         uses: ./central-scripts/actions/domain/my-step
-
-  job-stage-two:
-    runs-on: ubuntu-latest
-    needs: job-stage-one # <-- Connects the visual dependency line
-    steps:
-      - name: Initialize Vault Scripts
-        uses: ./.github/actions/clone-action-scripts
-        
-      - name: Execute Next Secret Task
-        uses: ./central-scripts/actions/domain/next-step
 
 ```
 
@@ -67,7 +47,7 @@ jobs:
 
 ## Pattern B: Housing Non-Sensitive / Native Actions Directly
 
-If you are creating an action that contains **zero proprietary logic** (e.g., a standardized wrapper around standard Node linting, running yarn install configurations, or public style-checks), **you do not need to over-engineer it by splitting it into the private GitLab action-scripts repo.** You can house the entire Composite Action right here. It will mirror seamlessly to GitHub and can be consumed instantly by our repositories.
+If you are creating an action that contains **zero proprietary logic** (e.g., a standardized wrapper around standard Node linting, running yarn install configurations, or public style-checks), **do not over-engineer it by splitting it into GitLab.** You can house the entire Composite Action right here. It will mirror seamlessly to GitHub and can be consumed instantly by our repositories.
 
 ### Implementation Setup
 
@@ -100,7 +80,7 @@ runs:
 
 Sometimes, a pipeline needs to pull proprietary logic from GitLab, but you **don't** want or need a massive multi-job grid on the GitHub UI dashboard. You just want one worker machine to turn on, run a sequence of scripts, and shut down.
 
-This model is significantly cleaner for small sequential workflows because you only run the `clone-action-scripts` step **exactly once**, saving execution time.
+This model is significantly cleaner for small sequential workflows because you only run the `clone-action-scripts` helper step **exactly once**, saving execution time and completely bypassing the multi-cloning constraint.
 
 ### Implementation Setup
 
@@ -123,21 +103,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Pull Private Logic Layer
-        uses: ./.github/actions/clone-action-scripts # <-- Clones once here
+        uses: k-int/github-actions/.github/actions/clone-action-scripts@main # <-- Clones once here
 
-        # The clone-action-scripts creates a directory called central-scripts
-        # within which the individual scripts can be accessed
       - name: Run Sequential Step A
         uses: ./central-scripts/actions/hello-world/echo-hello
 
       - name: Run Sequential Step B
         uses: ./central-scripts/actions/hello-world/echo-world
-
-      - name: Inline Bash Fallback Execution
-        shell: bash
-        run: |
-          echo "Running an ad-hoc DevOps internal script straight from the runner..."
-          bash ./central-scripts/scripts/custom-cleanup.sh
 
 ```
 
