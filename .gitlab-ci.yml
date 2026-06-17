@@ -8,7 +8,7 @@ include:
       target_url: ssh://git@github.com/k-int/github-actions.git
       branches:
         - main
-        # - test # A place to put actions we're testing out
+        - test # A place to put actions we're testing out
       additional_push_opts: "--force" # This is DESTRUCTIVE, github WILL be overwritten
 
 # Override the component's underlying job to target your runner
