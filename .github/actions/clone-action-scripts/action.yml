@@ -8,6 +8,10 @@ inputs:
   deploy_token:
     description: 'GitLab deployment token'
     required: true
+  branch:
+    description: 'Branch to clone from GitLab'
+    required: false
+    default: 'main'
 
 runs:
   using: "composite"
@@ -15,4 +19,5 @@ runs:
     - name: Fetch Core Logic (Shallow Clone)
       shell: bash
       run: |
-        git clone --depth 1 --single-branch --branch main https://${{ inputs.deploy_user }}:${{ inputs.deploy_token }}@gitlab.com/knowledge-integration/pipeline-utils/github-actions/external-github-action-scripts.git central-scripts
+        git clone --depth 1 --single-branch --branch ${{ inputs.branch }} \
+        https://${{ inputs.deploy_user }}:${{ inputs.deploy_token }}@gitlab.com/knowledge-integration/pipeline-utils/github-actions/external-github-action-scripts.git central-scripts
