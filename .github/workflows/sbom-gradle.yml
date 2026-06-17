@@ -62,6 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write # NECESSARY for auto-merge of SBOM
     steps:
       - name: Checkout Application Repository
         uses: actions/checkout@v5
@@ -69,7 +70,7 @@ jobs:
           persist-credentials: true # Crucial for the subsequent git push step
 
       - name: Initialize action scripts
-        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+        uses: k-int/github-actions/.github/actions/clone-action-scripts@test
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
