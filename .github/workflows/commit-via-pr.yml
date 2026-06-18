@@ -65,7 +65,6 @@ jobs:
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
-          branch: test # FIXME This should be on main normally
 
       - name: Retrieve Upstream Assets (If Applicable)
         if: ${{ inputs.artifact_name != '' }}
