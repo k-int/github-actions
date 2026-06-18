@@ -59,7 +59,7 @@ jobs:
         with:
           persist-credentials: true
       - name: Commit via PR
-        uses: k-int/github-actions/.github/actions/commit-via-pr@test
+        uses: k-int/github-actions/.github/actions/commit-via-pr@main
         with:
           artifact_name:   ${{ inputs.artifact_name }}
           tracked_files:   ${{ inputs.tracked_files }}
