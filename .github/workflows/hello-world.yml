@@ -35,9 +35,11 @@ jobs:
 
       # 2. Pass the top-level input down to the composite action
       - name: Execute Echo Hello Action
-        uses: ./pipeline-scripts/actions/hello-world/echo-hello
-        with:
-          hello_text: ${{ inputs.hello_text }}
+        uses: |
+          chmod +x ./pipeline-scripts/scripts/hello-world/echo-hello.sh
+          
+          ./pipeline-scripts/scripts/hello-world/echo-hello.sh \
+            --text    "${{ inputs.hello_text }}" \
 
   # --- JOB 2 ---
   job-world:
@@ -53,9 +55,11 @@ jobs:
 
       # 3. Pass the top-level input down to the composite action
       - name: Execute Echo World Action
-        uses: ./pipeline-scripts/actions/hello-world/echo-world
-        with:
-          world_text: ${{ inputs.world_text }}
+        uses: |
+          chmod +x ./pipeline-scripts/scripts/hello-world/echo-world.sh
+          
+          ./pipeline-scripts/scripts/hello-world/echo-hello.sh \
+            --text    "${{ inputs.world_text }}" \
 
   # --- JOB 3 ---
   job-combine:
@@ -72,4 +76,7 @@ jobs:
 
       # Combine doesn't need input variables; it relies entirely on the generated artifacts
       - name: Execute Combine Action
-        uses: ./pipeline-scripts/actions/hello-world/combine
+        uses: |
+          chmod +x ./pipeline-scripts/scripts/hello-world/combine.sh
+          
+          ./pipeline-scripts/scripts/hello-world/combine.sh
