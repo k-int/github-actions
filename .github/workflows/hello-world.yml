@@ -2,6 +2,17 @@ name: Hello World Example Action
 
 on:
   workflow_call:
+    inputs:
+      hello_text:
+        description: "Custom string for the Hello phase"
+        type: string
+        required: false
+        default: "hello"
+      world_text:
+        description: "Custom string for the World phase"
+        type: string
+        required: false
+        default: "world"
     secrets:
       GITLAB_DEPLOY_USER:
         required: true
@@ -14,28 +25,46 @@ jobs:
     name: Echo Hello Task
     runs-on: ubuntu-latest
     steps:
-      - name: Initialize action scripts
-        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+      - name: Initialize Pipeline Scripts
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Execute Echo Hello Action
-        uses: ./central-scripts/actions/hello-world/echo-hello
+        shell: bash
+        run: |
+          chmod +x ./pipeline-scripts/scripts/hello-world/echo-hello.sh
+          ./pipeline-scripts/scripts/hello-world/echo-hello.sh --dir ./hello-output --text "${{ inputs.hello_text }}"
+
+      - name: Upload Hello Artifact Bridge
+        uses: actions/upload-artifact@v5
+        with:
+          name: hello-artifact
+          path: ./hello-output/hello.txt
 
   # --- JOB 2 ---
   job-world:
     name: Echo World Task
     runs-on: ubuntu-latest
     steps:
-      - name: Initialize action scripts
-        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+      - name: Initialize Pipeline Scripts
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Execute Echo World Action
-        uses: ./central-scripts/actions/hello-world/echo-world
+        shell: bash
+        run: |
+          chmod +x ./pipeline-scripts/scripts/hello-world/echo-world.sh
+          ./pipeline-scripts/scripts/hello-world/echo-world.sh --dir ./world-output --text "${{ inputs.world_text }}"
+
+      - name: Upload World Artifact Bridge
+        uses: actions/upload-artifact@v5
+        with:
+          name: world-artifact
+          path: ./world-output/world.txt
 
   # --- JOB 3 ---
   job-combine:
@@ -43,11 +72,32 @@ jobs:
     runs-on: ubuntu-latest
     needs: [job-hello, job-world]
     steps:
-      - name: Initialize action scripts
-        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+      - name: Initialize Pipeline Scripts
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
+      - name: Download Hello Dependency
+        uses: actions/download-artifact@v5
+        with:
+          name: hello-artifact
+          path: ./hello-dir
+
+      - name: Download World Dependency
+        uses: actions/download-artifact@v5
+        with:
+          name: world-artifact
+          path: ./world-dir
+
       - name: Execute Combine Action
-        uses: ./central-scripts/actions/hello-world/combine
+        shell: bash
+        run: |
+          chmod +x ./pipeline-scripts/scripts/hello-world/combine.sh
+          ./pipeline-scripts/scripts/hello-world/combine.sh ./hello-dir ./world-dir ./final-output
+
+      - name: Upload Final Combined Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: combined-hello-world
+          path: ./final-output/combined.txt
