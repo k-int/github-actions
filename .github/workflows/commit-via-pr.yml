@@ -57,34 +57,18 @@ jobs:
       - name: Checkout Application Repository
         uses: actions/checkout@v5
         with:
-          persist-credentials: true # Crucial for the subsequent git push execution
-
-      - name: Initialize Pipeline Scripts
-        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
+          persist-credentials: true
+      - name: Commit via PR
+        uses: k-int/github-actions/.github/actions/commit-via-pr@test
         with:
-          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
-          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
-
-      - name: Retrieve Upstream Assets (If Applicable)
-        if: ${{ inputs.artifact_name != '' }}
-        uses: actions/download-artifact@v5
-        with:
-          name: ${{ inputs.artifact_name }}
-
-      - name: Execute Bash PR Delivery Script
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          chmod +x ./pipeline-scripts/delivery/github/update-via-pr.sh
-          
-          ./pipeline-scripts/delivery/github/update-via-pr.sh \
-            --tracked-files    "${{ inputs.tracked_files }}" \
-            --git-user-name    "${{ inputs.git_user_name }}" \
-            --git-user-email   "${{ inputs.git_user_email }}" \
-            --commit-message   "${{ inputs.commit_message }}" \
-            --append-skip-ci   "${{ inputs.append_skip_ci }}" \
-            --branch-prefix    "${{ inputs.branch_prefix }}" \
-            --base-branch      "${{ inputs.base_branch }}" \
-            --pr-title         "${{ inputs.pr_title }}" \
-            --pr-body          "${{ inputs.pr_body }}"
+          artifact_name:   ${{ inputs.artifact_name }}
+          tracked_files:   ${{ inputs.tracked_files }}
+          git_user_name:   ${{ inputs.git_user_name }}
+          git_user_email:  ${{ inputs.git_user_email }}
+          commit_message:  ${{ inputs.commit_message }}
+          append_skip_ci:  ${{ inputs.append_skip_ci }}
+          branch_prefix:   ${{ inputs.branch_prefix }}
+          pr_title:        ${{ inputs.pr_title }}
+          pr_body:         ${{ inputs.pr_body }}
+          deploy_user:     ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token:    ${{ secrets.GITLAB_DEPLOY_TOKEN }}
