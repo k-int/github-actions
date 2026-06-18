@@ -1,0 +1,60 @@
+name: 'Git PR Delivery'
+description: 'Stages files, pushes to a transient branch, and opens a PR'
+inputs:
+  artifact_name:
+    description: 'Optional artifact to download first'
+    required: false
+    default: ''
+  tracked_files:
+    required: true
+  git_user_name:
+    required: false
+    default: 'EthanFreestone'
+  git_user_email:
+    required: false
+    default: 'ethan.freestone@k-int.co.uk'
+  commit_message:
+    required: true
+  append_skip_ci:
+    required: false
+    default: 'true'
+  branch_prefix:
+    required: true
+  pr_title:
+    required: true
+  pr_body:
+    required: false
+    default: 'Automated compliance update via pipeline.'
+  deploy_user:
+    required: true
+  deploy_token:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Initialize Pipeline Scripts
+      uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
+      with:
+        deploy_user: ${{ inputs.deploy_user }}
+        deploy_token: ${{ inputs.deploy_token }}
+    - name: Retrieve Upstream Assets (If Applicable)
+      if: ${{ inputs.artifact_name != '' }}
+      uses: actions/download-artifact@v5
+      with:
+        name: ${{ inputs.artifact_name }}
+    - name: Execute PR Delivery
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        chmod +x ./pipeline-scripts/delivery/github/update-via-pr.sh
+        ./pipeline-scripts/delivery/github/update-via-pr.sh \
+          --tracked-files    "${{ inputs.tracked_files }}" \
+          --git-user-name    "${{ inputs.git_user_name }}" \
+          --git-user-email   "${{ inputs.git_user_email }}" \
+          --commit-message   "${{ inputs.commit_message }}" \
+          --append-skip-ci   "${{ inputs.append_skip_ci }}" \
+          --branch-prefix    "${{ inputs.branch_prefix }}" \
+          --base-branch      "$GITHUB_REF_NAME" \
+          --pr-title         "${{ inputs.pr_title }}" \
+          --pr-body          "${{ inputs.pr_body }}"
