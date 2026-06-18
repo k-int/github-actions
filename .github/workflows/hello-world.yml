@@ -2,6 +2,18 @@ name: Hello World Example Action
 
 on:
   workflow_call:
+    # 1. Define the top-level inputs allowed by the orchestrator
+    inputs:
+      hello_text:
+        description: "Custom string for the Hello phase"
+        type: string
+        required: false
+        default: "hello"
+      world_text:
+        description: "Custom string for the World phase"
+        type: string
+        required: false
+        default: "world"
     secrets:
       GITLAB_DEPLOY_USER:
         required: true
@@ -20,8 +32,11 @@ jobs:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
+      # 2. Pass the top-level input down to the composite action
       - name: Execute Echo Hello Action
         uses: ./central-scripts/actions/hello-world/echo-hello
+        with:
+          hello_text: ${{ inputs.hello_text }}
 
   # --- JOB 2 ---
   job-world:
@@ -34,8 +49,11 @@ jobs:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
+      # 3. Pass the top-level input down to the composite action
       - name: Execute Echo World Action
         uses: ./central-scripts/actions/hello-world/echo-world
+        with:
+          world_text: ${{ inputs.world_text }}
 
   # --- JOB 3 ---
   job-combine:
@@ -49,5 +67,6 @@ jobs:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
+      # Combine doesn't need input variables; it relies entirely on the generated artifacts
       - name: Execute Combine Action
         uses: ./central-scripts/actions/hello-world/combine
