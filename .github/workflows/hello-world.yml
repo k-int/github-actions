@@ -2,7 +2,6 @@ name: Hello World Example Action
 
 on:
   workflow_call:
-    # 1. Define the top-level inputs allowed by the orchestrator
     inputs:
       hello_text:
         description: "Custom string for the Hello phase"
@@ -27,19 +26,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Initialize Pipeline Scripts
-        # FIXME This should be on main normally
         uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@test
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
-      # 2. Pass the top-level input down to the composite action
       - name: Execute Echo Hello Action
-        uses: |
+        shell: bash
+        run: |
           chmod +x ./pipeline-scripts/scripts/hello-world/echo-hello.sh
-          
-          ./pipeline-scripts/scripts/hello-world/echo-hello.sh \
-            --text    "${{ inputs.hello_text }}" \
+          ./pipeline-scripts/scripts/hello-world/echo-hello.sh --dir ./hello-output --text "${{ inputs.hello_text }}"
+
+      - name: Upload Hello Artifact Bridge
+        uses: actions/upload-artifact@v5
+        with:
+          name: hello-artifact
+          path: ./hello-output/hello.txt
 
   # --- JOB 2 ---
   job-world:
@@ -47,19 +49,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Initialize Pipeline Scripts
-        # FIXME This should be on main normally
         uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@test
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
-      # 3. Pass the top-level input down to the composite action
       - name: Execute Echo World Action
-        uses: |
+        shell: bash
+        run: |
           chmod +x ./pipeline-scripts/scripts/hello-world/echo-world.sh
-          
-          ./pipeline-scripts/scripts/hello-world/echo-hello.sh \
-            --text    "${{ inputs.world_text }}" \
+          ./pipeline-scripts/scripts/hello-world/echo-world.sh --dir ./world-output --text "${{ inputs.world_text }}"
+
+      - name: Upload World Artifact Bridge
+        uses: actions/upload-artifact@v5
+        with:
+          name: world-artifact
+          path: ./world-output/world.txt
 
   # --- JOB 3 ---
   job-combine:
@@ -68,15 +73,31 @@ jobs:
     needs: [job-hello, job-world]
     steps:
       - name: Initialize Pipeline Scripts
-        # FIXME This should be on main normally
         uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@test
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
-      # Combine doesn't need input variables; it relies entirely on the generated artifacts
+      - name: Download Hello Dependency
+        uses: actions/download-artifact@v5
+        with:
+          name: hello-artifact
+          path: ./hello-dir
+
+      - name: Download World Dependency
+        uses: actions/download-artifact@v5
+        with:
+          name: world-artifact
+          path: ./world-dir
+
       - name: Execute Combine Action
-        uses: |
+        shell: bash
+        run: |
           chmod +x ./pipeline-scripts/scripts/hello-world/combine.sh
-          
-          ./pipeline-scripts/scripts/hello-world/combine.sh
+          ./pipeline-scripts/scripts/hello-world/combine.sh ./hello-dir ./world-dir ./final-output
+
+      - name: Upload Final Combined Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: combined-hello-world
+          path: ./final-output/combined.txt
