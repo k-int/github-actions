@@ -26,67 +26,105 @@ on:
         required: true
 
 jobs:
-  # JOB 1: Spin up and execute the Syft analysis
+  # =============================================================================
+  # PHASE 1: Dependency Lock Generation
+  # =============================================================================
+  generate-locks:
+    name: Generate Gradle Locks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Initialize pipeline scripts
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
+        with:
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+
+      - name: Inject lockfiles
+        shell: bash
+        run: |
+          chmod +x ./pipeline-scripts/scripts/sbom-generation/gradle/generate-locks.sh
+          ./pipeline-scripts/scripts/sbom-generation/gradle/generate-locks.sh \
+            --dir "${{ github.workspace }}/${{ inputs.gradle_project_path }}"
+
+      - name: Upload lockfiles
+        uses: actions/upload-artifact@v5
+        with:
+          name: raw-gradle-lockfiles
+          path: |
+            ${{ inputs.gradle_project_path }}/**/gradle.lockfile
+            ${{ inputs.gradle_project_path }}/gradle.lockfile
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # =============================================================================
+  # PHASE 2: Core SBOM Compilation via Syft
+  # =============================================================================
   generate-sbom:
+    name: Compile Core SBOM
+    needs: generate-locks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Application Repository
         uses: actions/checkout@v5
 
-      - name: Initialize action scripts
-        # For using scripts on a certain branch, you want main here and set branch below
-        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+      - name: Initialize pipeline scripts
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
-          # branch: test # !Set the branch for the scripts here!
 
-      - name: Generate SBOM Data
-        uses: ./central-scripts/actions/sbom-generation/gradle-syft-sbom
+      - name: Retrieve generated locks
+        uses: actions/download-artifact@v5
         with:
-          gradle_project_path: ${{ inputs.gradle_project_path }}
-          syft_args: ${{ inputs.syft_args }}
+          name: raw-gradle-lockfiles
 
-      # Saving the newly generated assets
-      - name: Share Generated Compliance Assets
+      - name: Compile workspace SBOM
+        shell: bash
+        run: |
+          chmod +x ./pipeline-scripts/scripts/sbom-generation/gradle/generate-sbom.sh
+          ./pipeline-scripts/scripts/sbom-generation/gradle/generate-sbom.sh \
+            --dir "${{ github.workspace }}/${{ inputs.gradle_project_path }}" \
+            --output-file "${{ inputs.tracked_files }}" \
+            --syft-args "${{ inputs.syft_args }}"
+
+      - name: Clean unwanted lockfiles before packaging artifacts
+        shell: bash
+        run: |
+          if [ "${{ inputs.commit_lockfiles }}" != "true" ]; then
+            echo "🧹 Purging tracking layers for lockfiles so they are excluded from zip packages..."
+            find . -name "gradle.lockfile" -type f -delete
+          fi
+
+      - name: Upload assets (lockfiles and tracked_files)
         uses: actions/upload-artifact@v5
         with:
           name: compiled-sbom-assets
           path: |
-            ${{ inputs.tracked_files }}
-            **/gradle.lockfile
+            ${{ inputs.gradle_project_path }}/${{ inputs.tracked_files }}
+            ${{ inputs.gradle_project_path }}/**/gradle.lockfile
+            ${{ inputs.gradle_project_path }}/gradle.lockfile
           if-no-files-found: ignore
           retention-days: 1
 
-  # JOB 2: Download assets, match differentials, and push to host repo
+  # =============================================================================
+  # PHASE 3: Automated Pull Request Sync & Merge Loop (Reusable Call)
+  # =============================================================================
   commit-sbom:
+    name: Push and sync SBOM
     needs: generate-sbom
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write # NECESSARY for auto-merge of SBOM
-    steps:
-      - name: Checkout Application Repository
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: true # Crucial for the subsequent git push step
-
-      - name: Initialize action scripts
-        # For using scripts on a certain branch, you want main here and set branch below
-        uses: k-int/github-actions/.github/actions/clone-action-scripts@main
-        with:
-          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
-          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
-          # branch: test # !Set the branch for the scripts here!
-
-      # Pull the assets generated by Job 1 directly into this runner's workspace
-      - name: Retrieve Generated Compliance Assets
-        uses: actions/download-artifact@v5
-        with:
-          name: compiled-sbom-assets
-
-      - name: Upload and Sync BOM
-        uses: ./central-scripts/actions/sbom-generation/commit-sbom-files
-        with:
-          tracked_files: ${{ inputs.tracked_files }}
-          commit_lockfiles: ${{ inputs.commit_lockfiles }}
+    uses: ./.github/workflows/commit-via-pr.yml
+    with:
+      artifact_name: "compiled-sbom-assets"
+      tracked_files: >-
+        ${{ inputs.gradle_project_path }}/${{ inputs.tracked_files }}
+        ${{ inputs.commit_lockfiles == 'true' && '**/gradle.lockfile' || '' }}
+      commit_message: "chore: automated compliance assets update via Syft"
+      branch_prefix: "sbom-update"
+      pr_title: "Automated SBOM update"
+      pr_body: "Automated SBOM update via Syft."
+    secrets:
+      GITLAB_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
+      GITLAB_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
