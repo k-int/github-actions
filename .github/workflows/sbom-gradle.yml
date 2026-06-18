@@ -85,6 +85,9 @@ jobs:
         with:
           name: raw-gradle-lockfiles
 
+      - name: Install Syft
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
       - name: Compile workspace SBOM
         shell: bash
         run: |
