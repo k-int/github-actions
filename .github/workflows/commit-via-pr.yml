@@ -1,0 +1,92 @@
+name: Centralized Git PR Delivery
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        type: string
+        description: 'Optional name of the GitHub artifact containing files generated in an upstream job'
+        required: false
+        default: ''
+      tracked_files:
+        type: string
+        description: 'Space-separated list of generated files to verify and commit'
+        required: true
+      git_user_name:
+        type: string
+        required: false
+        default: 'EthanFreestone'
+      git_user_email:
+        type: string
+        required: false
+        default: 'ethan.freestone@k-int.co.uk'
+      commit_message:
+        type: string
+        required: true
+      append_skip_ci:
+        type: string
+        required: false
+        default: 'true'
+      branch_prefix:
+        type: string
+        required: true
+      base_branch:
+        type: string
+        required: false
+        default: 'main'
+      pr_title:
+        type: string
+        required: true
+      pr_body:
+        type: string
+        required: false
+        default: 'Automated compliance update via pipeline.'
+    secrets:
+      GITLAB_DEPLOY_USER:
+        required: true
+      GITLAB_DEPLOY_TOKEN:
+        required: true
+
+jobs:
+  deliver-assets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout Application Repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: true # Crucial for the subsequent git push execution
+
+      - name: Initialize Pipeline Scripts
+        # FIXME This should be on main normally
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@test
+        with:
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+          branch: test # FIXME This should be on main normally
+
+      - name: Retrieve Upstream Assets (If Applicable)
+        if: ${{ inputs.artifact_name != '' }}
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ inputs.artifact_name }}
+
+      - name: Execute Bash PR Delivery Script
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x ./pipeline-scripts/delivery/github/update-via-pr.sh
+          
+          ./pipeline-scripts/delivery/github/update-via-pr.sh \
+            --tracked-files    "${{ inputs.tracked_files }}" \
+            --git-user-name    "${{ inputs.git_user_name }}" \
+            --git-user-email   "${{ inputs.git_user_email }}" \
+            --commit-message   "${{ inputs.commit_message }}" \
+            --append-skip-ci   "${{ inputs.append_skip_ci }}" \
+            --branch-prefix    "${{ inputs.branch_prefix }}" \
+            --base-branch      "${{ inputs.base_branch }}" \
+            --pr-title         "${{ inputs.pr_title }}" \
+            --pr-body          "${{ inputs.pr_body }}"
