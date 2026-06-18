@@ -10,39 +10,42 @@ As a DevOps engineer working here, you are composing **GitHub Reusable Workflows
 
 When introducing a new workflow or automation requirement, map your strategy against our three core design patterns:
 
-| Pattern                             | Where Logic Lives                                    | Best Used For                                                                    | Visual UI Graph?   | Individual Retries? |
-|:------------------------------------|:-----------------------------------------------------|:---------------------------------------------------------------------------------|:-------------------|:--------------------|
-| **A. Privatized Multi-Job Graph**   | `external-github-actions-scripts` (GitLab)           | Proprietary, business-sensitive, multi-stage build/test/deploy logic.            | **Yes** (Full DAG) | **Yes** (Per Job)   |
-| **B. Native Public Actions**        | Directly in this repository under `.github/actions/` | Generic utilities, lint rules, open-source wrappers, non-sensitive tasks.        | No (Single block)  | No (All-or-nothing) |
-| **C. Inlined Script Orchestration** | Raw execution steps within a single master job       | Lightweight pipelines, execution sequences that don't need granular UI tracking. | No (Single card)   | No (All-or-nothing) |
+| Pattern | Where Logic Lives | Best Used For | Visual UI Graph? | Individual Retries? |
+| :--- | :--- | :--- | :--- | :--- |
+| **A. Privatized Multi-Job Graph** | `shared-pipeline-scripts` (GitLab) | Proprietary, business-sensitive, multi-stage build/test/compliance logic. | **Yes** (Full DAG) | **Yes** (Per Job) |
+| **B. Native Public Actions** | Directly in this repository under `.github/actions/` | Generic utilities, lint rules, open-source wrappers, non-sensitive tasks. | No (Single block) | No (All-or-nothing) |
+| **C. Inlined Script Orchestration** | Raw execution steps within a single master job | Lightweight pipelines, execution sequences that don't need granular UI tracking. | No (Single card) | No (All-or-nothing) |
 
 ---
 
 ## Pattern A: Writing a Privatized Multi-Job Graph
 
-Use this pattern if your execution code contains proprietary information *and* you want the full **FOLIO-style visual dashboard experience** with step-level failure retries on GitHub.
+Use this pattern if your execution code contains proprietary information *and* you want a clear visual dashboard experience with step-level failure retries on GitHub.
 
 ### 1. The Core Logic (On GitLab Vault Repo)
-Write your isolated composite steps inside `external-github-actions-scripts` under an intuitive domain path (e.g., `actions/domain/my-step/action.yml`).
+Write your standalone shell scripts or isolated composite actions inside `shared-pipeline-scripts` under an intuitive domain path (e.g., `scripts/sbom-generation/gradle/generate-locks.sh`).
 
 ### 2. The Blueprint Orchestrator (In this Repo)
-Create your reusable workflow under `.github/workflows/your-pipeline.yml`. You **must** utilize our DRY `clone-action-scripts` helper step at the beginning of *every independent job* to pull the private logic into that runner's memory safely.
+Create your reusable workflow under `.github/workflows/your-pipeline.yml`. You **must** utilize our DRY `clone-pipeline-scripts` helper step at the beginning of *every independent job* to pull the private logic into that runner's memory safely.
 
-> 🚨 **CRITICAL DEVELOPMENT RULE:** You **cannot** reference the clone helper using a relative path like `uses: ./.github/actions/clone-action-scripts` inside a reusable workflow. It will evaluate relative to the *caller application workspace* and break. You **must** use its full canonical path:
+> 🚨 **CRITICAL DEVELOPMENT RULE:** You **cannot** reference the clone helper using a relative path like `uses: ./.github/actions/clone-pipeline-scripts` inside a reusable workflow. It will evaluate relative to the *caller application workspace* and break. You **must** use its full canonical path:
 
 ```yaml
 jobs:
   job-stage-one:
     runs-on: ubuntu-latest
     steps:
-      - name: Initialize Vault Scripts
-        uses: k-int/github-actions/.github/actions/clone-action-scripts@main # <-- MUST use absolute path
+      - name: Initialize Pipeline Scripts
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main # <-- MUST use absolute path
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
-      - name: Execute Secret Task
-        uses: ./central-scripts/actions/domain/my-step
+      - name: Execute Shell Script Core
+        shell: bash
+        run: |
+          chmod +x ./pipeline-scripts/scripts/domain/my-script.sh
+          ./pipeline-scripts/scripts/domain/my-script.sh --arg value
 
 ```
 
@@ -83,7 +86,7 @@ runs:
 
 Sometimes, a pipeline needs to pull proprietary logic from GitLab, but you **don't** want or need a massive multi-job grid on the GitHub UI dashboard. You just want one worker machine to turn on, run a sequence of scripts, and shut down.
 
-This model is significantly cleaner for small sequential workflows because you only run the `clone-action-scripts` helper step **exactly once**, saving execution time and completely bypassing the multi-cloning constraint.
+This model is significantly cleaner for small sequential workflows because you only run the `clone-pipeline-scripts` helper step **exactly once**, saving execution time and completely bypassing the multi-cloning constraint.
 
 ### Implementation Setup
 
@@ -106,16 +109,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Pull Private Logic Layer
-        uses: k-int/github-actions/.github/actions/clone-action-scripts@main # <-- Clones once here
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main # <-- Clones once here
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       - name: Run Sequential Step A
-        uses: ./central-scripts/actions/hello-world/echo-hello
+        shell: bash
+        run: ./pipeline-scripts/hello-world/echo-hello.sh
 
       - name: Run Sequential Step B
-        uses: ./central-scripts/actions/hello-world/echo-world
+        shell: bash
+        run: ./pipeline-scripts/hello-world/echo-world.sh
 
 ```
 

@@ -78,11 +78,12 @@ This repository acts as the visual layout orchestrator. Below is the structural 
 
 ### Reusable Workflows (End-User Blueprints)
 
-| Workflow Blueprint File         | Canonical Path (`uses:`)                                                | Strategy Pattern                | Status        |
-|---------------------------------|-------------------------------------------------------------------------|---------------------------------|---------------|
-| **`sbom-gradle.yml`**           | `k-int/github-actions/.github/workflows/sbom-gradle.yml@main`           | **Pattern A** (Multi-Job Graph) | ● Active      |
-| **`hello-world.yml`**           | `k-int/github-actions/.github/workflows/hello-world.yml@main`           | **Pattern A** (Demo Layout)     | ● Active      |
-| **`build-grails-4-gradle.yml`** | `k-int/github-actions/.github/workflows/build-grails-4-gradle.yml@main` | Native Legacy Build             | ⚠️ Deprecated |
+| Workflow Blueprint File | Canonical Path (`uses:`) | Strategy Pattern | Status |
+| --- | --- | --- | --- |
+| **`sbom-gradle.yml`** | `k-int/github-actions/.github/workflows/sbom-gradle.yml@main` | **Pattern A** (Multi-Job Script Handoff) | ● Active |
+| **`commit-via-pr.yml`** | `k-int/github-actions/.github/workflows/commit-via-pr.yml@main` | Reusable Git PR Handoff Engine | ● Active |
+| **`hello-world.yml`** | `k-int/github-actions/.github/workflows/hello-world.yml@main` | **Pattern A** (Demo Layout) | ● Active |
+| **`build-grails-4-gradle.yml`** | `k-int/github-actions/.github/workflows/build-grails-4-gradle.yml@main` | Native Legacy Build | ⚠️ Deprecated |
 
 ---
 
@@ -106,13 +107,13 @@ jobs:
 
 ### Security Compliance: `sbom-gradle.yml`
 
-Generates an accurate Software Bill of Materials (SBOM) across Gradle projects. It uses an *in situ* dynamic lockfile injector before scanning via `anchore/syft`.
+Generates an accurate Software Bill of Materials (SBOM) across Gradle projects. It uses an *in situ* dynamic lockfile injector before scanning via `anchore/syft`, then pushes and merges changes cleanly via `commit-via-pr.yml`.
 
 #### Inputs
 
-* `gradle_project_path` *(String, Optional, Default: `.`)*: Relative directory path containing the target `gradlew` wrapper script (useful for monorepos like `mod-agreements/service`).
-* `syft_args` *(String, Optional, Default: `''`)*: Direct passthrough arguments for Syft. If blank, defaults to `-o cyclonedx-json=cdx-bom.json`.
-* `tracked_files` *(String, Optional, Default: `cdx-bom.json`)*: Space-separated list of generated compliance files for the Git engine to track and pull.
+* `gradle_project_path` *(String, Optional, Default: `.`)*: Relative directory path containing the target `gradlew` wrapper script.
+* `syft_args` *(String, Optional, Default: `''`)*: Direct passthrough arguments for Syft. If blank, defaults to standard cdx-bom layout properties.
+* `tracked_files` *(String, Optional, Default: `cdx-bom.json`)*: Specified filename string for the generated compliance assets.
 * `commit_lockfiles` *(String, Optional, Default: `'false'`)*: Set to `'true'` to commit the dynamically compiled `gradle.lockfile` elements to your repository history alongside the BOM.
 
 #### Implementation
@@ -122,6 +123,7 @@ jobs:
    generate-sbom:
       permissions:
          contents: write
+         pull-requests: write
       uses: k-int/github-actions/.github/workflows/sbom-gradle.yml@main
       secrets:
          GITLAB_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
@@ -131,32 +133,21 @@ jobs:
 
 ---
 
+### Shared Helpers (Internal Tooling)
 
-### Legacy Automation: `build-grails-4-gradle.yml`
+#### `clone-pipeline-scripts` (Composite Action)
 
-> 🛑 **DEPRECATION NOTICE:** This pipeline has been functional for an extended lifecycle period. It relies on legacy action versions (`actions/checkout@v3`, `setup-java@v3`) and does not utilize our secure automated GitLab cloning framework. **Do not use this blueprint for new repository onboarding initiatives.**
-
-Standard Java 11 / Grails 4 workspace execution compiling packages natively using raw Gradle wrapper build arguments.
-
----
-
-###  Shared Helpers (Internal Tooling)
-
-#### `clone-action-scripts` (Composite Action)
-
-* **Location:** `.github/actions/clone-action-scripts/action.yml`
+* **Location:** `.github/actions/clone-pipeline-scripts/action.yml`
 * **Access Level:** Internal Infrastructure Helper.
 
-This internal utility abstracts our vault synchronization logic. It maps corporate credentials to run a shallow clone (`--depth 1`) of our private business logic into the volatile runner footprint under `./central-scripts`.
+This internal utility abstracts our vault synchronization logic. It maps corporate credentials to run a shallow clone (`--depth 1`) of our private business logic into the volatile runner footprint under `./pipeline-scripts`.
 
 > 💡 **DevOps Note:** This action must be declared at the initiation sequence of **every independent job block** within Pattern A configurations, as separate runner instances do not share on-disk storage spaces.
 > ```yaml
-> - name: Initialize action scripts
->   uses: k-int/github-actions/.github/actions/clone-action-scripts@main
+> - name: Initialize Pipeline Scripts
+>   uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
 >   with:
 >     deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
 >     deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 > 
 > ```
->
->
