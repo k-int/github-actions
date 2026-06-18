@@ -60,8 +60,7 @@ jobs:
           persist-credentials: true # Crucial for the subsequent git push execution
 
       - name: Initialize Pipeline Scripts
-        # FIXME This should be on main normally
-        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@test
+        uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
         with:
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
