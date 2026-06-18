@@ -7,6 +7,10 @@ on:
         type: string
         required: false
         default: '.'
+      sbom_output_path:
+        type: string
+        required: false
+        default: '.'
       syft_args:
         type: string
         required: false
@@ -87,6 +91,7 @@ jobs:
           chmod +x ./pipeline-scripts/scripts/sbom-generation/gradle/generate-sbom.sh
           ./pipeline-scripts/scripts/sbom-generation/gradle/generate-sbom.sh \
             --dir "${{ github.workspace }}/${{ inputs.gradle_project_path }}" \
+            --output-dir "${{ github.workspace }}/${{ inputs.sbom_output_path }}" \
             --output-file "${{ inputs.tracked_files }}" \
             --syft-args "${{ inputs.syft_args }}"
 
@@ -103,7 +108,7 @@ jobs:
         with:
           name: compiled-sbom-assets
           path: |
-            ${{ inputs.gradle_project_path }}/**/${{ inputs.tracked_files }}
+            ${{ inputs.sbom_output_path }}/${{ inputs.tracked_files }}
             ${{ inputs.gradle_project_path }}/**/gradle.lockfile
           if-no-files-found: ignore
           retention-days: 1
@@ -118,7 +123,7 @@ jobs:
     with:
       artifact_name: "compiled-sbom-assets"
       tracked_files: >-
-        ${{ inputs.gradle_project_path }}/${{ inputs.tracked_files }}
+        ${{ inputs.sbom_output_path }}/${{ inputs.tracked_files }}
         ${{ inputs.commit_lockfiles == 'true' && '**/gradle.lockfile' || '' }}
       commit_message: "chore: automated compliance assets update via Syft"
       branch_prefix: "sbom-update"
