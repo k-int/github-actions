@@ -30,7 +30,7 @@ jobs:
   # PHASE 1: Dependency Lock Generation
   # =============================================================================
   generate-locks:
-    name: Generate Gradle Locks
+    name: Generate gradle locks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -63,11 +63,11 @@ jobs:
   # PHASE 2: Core SBOM Compilation via Syft
   # =============================================================================
   generate-sbom:
-    name: Compile Core SBOM
+    name: Generate SBOM file
     needs: generate-locks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Application Repository
+      - name: Checkout repository
         uses: actions/checkout@v5
 
       - name: Initialize pipeline scripts
@@ -103,9 +103,8 @@ jobs:
         with:
           name: compiled-sbom-assets
           path: |
-            ${{ inputs.gradle_project_path }}/${{ inputs.tracked_files }}
+            ${{ inputs.gradle_project_path }}/**/${{ inputs.tracked_files }}
             ${{ inputs.gradle_project_path }}/**/gradle.lockfile
-            ${{ inputs.gradle_project_path }}/gradle.lockfile
           if-no-files-found: ignore
           retention-days: 1
 
