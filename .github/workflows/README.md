@@ -2,6 +2,8 @@
 
 This directory houses reusable workflows for K-Int internal projects.
 
+> ⚠️ **Engine Restriction**: All reusable workflows in this directory must remain at the root level. GitHub Actions does not support execution from subdirectories.
+
 ## Standard Pipelines
 
 ### [Centralized Gradle SBOM Generation](./sbom-gradle.yml)
@@ -10,7 +12,14 @@ The standardized pipeline for dependency tracking, dynamic lockfile injections, 
 ### [Centralized Git PR Delivery](./commit-via-pr.yml)
 The reusable automation delivery engine that tracks workspace updates, creates isolated upstream tracking branches, opens PRs, and triggers automated rebase fast-forwards.
 
-#### ⚠️ Branch Protection & Merge Strategy
+### [Folio OpenAPI CI/CD Pipeline](./folio-api-pipeline.yml)
+An end-to-end orchestration pipeline configured specifically for FOLIO modules. Automates Redocly bundling, multi-linter validations (`api-lint` and `api-schema-lint`), documentation tracking, and automated deployment syncs to AWS S3.
+
+#### Pipeline Topology
+1. **Validation Stage**: Executes Redocly specification lints alongside FOLIO's custom schema and API testing engines in parallel paths. (Triggers on both Pushes and Pull Requests).
+2. **Build & Release Stage**: Runs bundlers, exports generated documentation sites, and safely deploys static assets out to centralized AWS S3 tracking buckets. (Triggers strictly on `main`/`master` pushes or semantic version release tags).
+
+#### ⚠️ Branch Protection & Merge Strategy (for PR Delivery)
 This delivery framework is designed to be fully "protection-aware." To function correctly across repositories with active branch rules, ensure the following requirements are met:
 
 * **Permissions**: The calling job block **must** define explicit `pull-requests: write` and `contents: write` permissions.
@@ -18,13 +27,6 @@ This delivery framework is designed to be fully "protection-aware." To function 
   * If [Auto-merge](https://github.com/en/pulls/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request) is enabled in repository settings, the workflow will automatically enqueue the generated compliance updates.
   * If [Merge Queues](https://github.com/en/pulls/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request-with-a-merge-queue) are enabled on the destination branch, the workflow will queue the transaction automatically, bypassing direct push locks.
 * **Fallback Rules**: If auto-merge features are completely turned off, the workflow will safely create the PR and leave a tracking timeline comment for a human maintainer to execute manual review actions.
-
----
-
-## Folio-Specific Pipelines
-
-### [Folio OpenAPI CI/CD Pipeline](./folio-specific/folio-api-pipeline.yml)
-An end-to-end orchestration pipeline configured specifically for FOLIO modules. Automates Redocly bundling, multi- linter validations (`api-lint` and `api-schema-lint`), documentation tracking, and automated deployment syncs to AWS S3.
 
 ---
 
