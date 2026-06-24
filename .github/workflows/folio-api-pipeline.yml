@@ -15,37 +15,39 @@ on:
         required: true
       S3_SECRET_ACCESS_KEY:
         required: true
+      GITLAB_DEPLOY_USER:
+        required: true
+      GITLAB_DEPLOY_TOKEN:
+        required: true
 
 jobs:
   # --- STAGE 1: BUILD THE CONSOLIDATED SPEC ---
   redocly-bundle:
     name: Redocly Bundle Spec
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Run Redocly Action
         uses: k-int/github-actions/.github/actions/openapi/redocly-build@main
         with:
           working-directory: ${{ inputs.working-directory }}
 
-      - name: Commit and Push Bundled Spec
-        shell: bash
-        run: |
-          git config --global user.name "EthanFreestone"
-          git config --global user.email "ethan.freestone@k-int.co.uk"
-          
-          # Stage the freshly generated file dynamically
-          git add ${{ inputs.working-directory }}/${{ inputs.openapi-filename }}
-          
-          # Only commit and push if the file actually changed
-          if ! git diff --cached --quiet; then
-            echo "Changes detected in spec. Committing back to branch..."
-            git commit -m "chore: auto-update bundled openapi specification [skip ci]"
-            git push
-          else
-            echo "No changes detected in ${{ inputs.openapi-filename }}. Skipping git push."
-          fi
+      # --- INVOKING REFACTORED DIRECT COMMIT ENGINE ---
+      - name: Auto-Commit Bundled Specification
+        # DO NOT run this on main, instead it MUST be inside of the pull request
+        # That prevents issues with
+        if: github.event_name == 'pull_request'
+        uses: k-int/github-actions/.github/actions/commit-directly@main
+        with:
+          tracked_files: "${{ inputs.working-directory }}/${{ inputs.openapi-filename }}"
+          commit_message: "chore: auto-update bundled openapi specification"
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
       # Isolate the bundled asset into a clean directory for artifact sharing
       - name: Isolate Bundled Specification

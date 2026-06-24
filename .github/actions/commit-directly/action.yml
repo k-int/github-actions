@@ -1,0 +1,47 @@
+name: 'Git Direct Commit'
+description: 'Clones automation pipeline vault, stages files, and runs update-via-push.sh'
+inputs:
+  tracked_files:
+    description: 'Space-separated list of generated files to verify and commit'
+    required: true
+  commit_message:
+    description: 'The commit message to use'
+    required: false
+    default: 'chore: automated asset update'
+  git_user_name:
+    required: false
+    default: 'EthanFreestone'
+  git_user_email:
+    required: false
+    default: 'ethan.freestone@k-int.co.uk'
+  append_skip_ci:
+    description: 'Appends [skip ci] to the commit message to prevent workflow loops'
+    required: false
+    default: 'true'
+  deploy_user:
+    description: 'GitLab deployment username'
+    required: true
+  deploy_token:
+    description: 'GitLab deployment token'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Initialize Pipeline Scripts
+      uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
+      with:
+        deploy_user: ${{ inputs.deploy_user }}
+        deploy_token: ${{ inputs.deploy_token }}
+
+    - name: Execute Direct Push Delivery Script
+      shell: bash
+      run: |
+        chmod +x ./pipeline-scripts/delivery/github/update-via-push.sh
+        ./pipeline-scripts/delivery/github/update-via-push.sh \
+          --tracked-files   "${{ inputs.tracked_files }}" \
+          --git-user-name   "${{ inputs.git_user_name }}" \
+          --git-user-email  "${{ inputs.git_user_email }}" \
+          --commit-message  "${{ inputs.commit_message }}" \
+          --append-skip-ci  "${{ inputs.append_skip_ci }}" \
+          --target-branch   "${{ github.head_ref || github.ref_name }}"
