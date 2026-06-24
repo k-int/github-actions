@@ -1,0 +1,53 @@
+name: Redocly Build & Push
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      openapi-filename:
+        type: string
+        required: true
+    secrets:
+      GITLAB_DEPLOY_USER:
+        required: true
+      GITLAB_DEPLOY_TOKEN:
+        required: true
+
+jobs:
+  bundle-spec:
+    name: Bundle & auto-commit Redocly spec
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Run Redocly action
+        uses: k-int/github-actions/.github/actions/openapi/redocly-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Auto-commit bundled specification
+        if: github.event_name == 'pull_request'
+        uses: k-int/github-actions/.github/actions/commit-directly@main
+        with:
+          tracked_files: "${{ inputs.working-directory }}/${{ inputs.openapi-filename }}"
+          commit_message: "chore: auto-update bundled openapi specification"
+          deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
+          deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+
+      - name: Isolate bundled specification
+        run: |
+          mkdir -p built-spec
+          cp ${{ inputs.working-directory }}/${{ inputs.openapi-filename }} built-spec/
+
+      - name: Upload bundled spec artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: compiled-openapi-spec
+          path: built-spec/

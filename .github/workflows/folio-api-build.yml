@@ -1,0 +1,45 @@
+name: Folio OpenAPI Master Orchestrator
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      openapi-filename:
+        type: string
+        required: true
+    secrets:
+      S3_ACCESS_KEY_ID:
+        required: true
+      S3_SECRET_ACCESS_KEY:
+        required: true
+      GITLAB_DEPLOY_USER:
+        required: true
+      GITLAB_DEPLOY_TOKEN:
+        required: true
+
+jobs:
+  # Job 1: Run the compilation and auto-commit
+  run-redocly-bundle:
+    name: Redocly compilation stage
+    uses: k-int/github-actions/.github/workflows/redocly-build.yml@main
+    with:
+      working-directory: ${{ inputs.working-directory }}
+      openapi-filename: ${{ inputs.openapi-filename }}
+    secrets:
+      GITLAB_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
+      GITLAB_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+
+  # Job 2: Pass compiled artifacts directly down into the Folio validation toolchain
+  run-folio-toolchain:
+    name: Folio toolchain stage
+    needs: run-redocly-bundle
+    uses: k-int/github-actions/.github/workflows/folio-api-tools-pipeline.yml@main
+    with:
+      api_directories: 'built-spec'
+      artifact-name: 'compiled-openapi-spec'
+    secrets:
+      S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+      S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}

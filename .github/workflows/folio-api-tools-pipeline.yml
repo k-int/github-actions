@@ -1,0 +1,84 @@
+name: Folio API Tools Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      api-directories:
+        type: string
+        required: false
+        default: "openapi"
+      artifact-name:
+        type: string
+        required: false
+        default: ""
+    secrets:
+      S3_ACCESS_KEY_ID:
+        required: true
+      S3_SECRET_ACCESS_KEY:
+        required: true
+
+jobs:
+  folio-api-lint:
+    name: Folio API Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Download Compiled Spec
+        if: inputs.artifact-name != ''
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.api-directories }}
+
+      - name: Run Folio API Linter
+        uses: k-int/github-actions/.github/actions/openapi/folio-api-lint@main
+        with:
+          api_directories: ${{ inputs.api-directories }}
+
+  folio-schema-lint:
+    name: Folio Schema Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Download Compiled Spec
+        if: inputs.artifact-name != ''
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.api-directories }}
+
+      - name: Run Folio Schema Linter
+        uses: k-int/github-actions/.github/actions/openapi/folio-api-schema-lint@main
+        with:
+          api_directories: ${{ inputs.api-directories }}
+
+  folio-docs-deploy:
+    name: Folio Doc Gen & S3 Deploy
+    needs: [folio-api-lint, folio-schema-lint]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref }}
+          submodules: recursive
+
+      - name: Download Compiled Spec
+        if: inputs.artifact-name != ''
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.api-directories }}
+
+      - name: Run Folio Deployment Action
+        uses: k-int/github-actions/.github/actions/openapi/folio-api-doc-deploy@main
+        with:
+          api_directories: ${{ inputs.api-directories }}
+          s3_access_key_id: ${{ secrets.S3_ACCESS_KEY_ID }}
+          s3_secret_access_key: ${{ secrets.S3_SECRET_ACCESS_KEY }}

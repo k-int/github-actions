@@ -12,14 +12,26 @@ The standardized pipeline for dependency tracking, dynamic lockfile injections, 
 ### [Centralized Git PR Delivery](./commit-via-pr.yml)
 The reusable automation delivery engine that tracks workspace updates, creates isolated upstream tracking branches, opens PRs, and triggers automated rebase fast-forwards.
 
-### [Folio OpenAPI CI/CD Pipeline](./folio-api-pipeline.yml)
-An end-to-end orchestration pipeline configured specifically for FOLIO modules. Automates Redocly bundling, multi-linter validations (`api-lint` and `api-schema-lint`), documentation tracking, and automated deployment syncs to AWS S3.
+### [Folio OpenAPI Master Orchestrator](./folio-api-build.yml)
+The high-level core orchestrator for complete FOLIO module API lifecycles. It chains together specification compilation and validation sub-pipelines using secure artifact handshakes.
 
-#### Pipeline Topology
-1. **Validation Stage**: Executes Redocly specification lints alongside FOLIO's custom schema and API testing engines in parallel paths. (Triggers on both Pushes and Pull Requests).
-2. **Build & Release Stage**: Runs bundlers, exports generated documentation sites, and safely deploys static assets out to centralized AWS S3 tracking buckets. (Triggers strictly on `main`/`master` pushes or semantic version release tags).
+### [Redocly Specification Compiler](./redocly-build.yml)
+Handles the isolated validation, linting, and bundling of split OpenAPI specification templates into an optimized single asset. Features an integrated direct-commit engine that updates bundled specifications back onto feature PR branches automatically.
 
-#### ⚠️ Branch Protection & Merge Strategy (for PR Delivery)
+### [Folio API Tools Validation Suite](./folio-api-tools-pipeline.yml)
+An independent validation and delivery engine wrapping FOLIO-specific scripts (`api-lint`, `api-schema-lint`, and `api-doc`). Runs validation jobs concurrently and pushes static documentation directly to AWS S3. Can be called downstream from an orchestrator or run directly on local specification directories.
+
+---
+
+## Architecture & Lifecycle Topology
+
+When using the **Folio OpenAPI Master Orchestrator**, the end-to-end execution lifecycle passes through three decoupled phases across your independent sub-pipelines:
+
+1. **Compilation & Delivery Stage (`redocly-build.yml`)**: Compiles raw templates into a single tracking specification file. If running within a `pull_request` context, it runs a direct push delivery script to commit the compiled file back to your branch window so it can be reviewed inside the code space.
+2. **Parallel Validation Stage (`folio-api-tools-pipeline.yml`)**: Downloads the compiled specimen artifact and processes it concurrently through FOLIO's custom API validation and JSON Schema testing engines.
+3. **Release & Deploy Stage (`folio-api-tools-pipeline.yml`)**: Generates final static HTML documentation from the verified specification and publishes tracking deployment assets to central AWS S3 buckets. (This stage triggers strictly on `main`/`master` pushes or semantic version release tags).
+
+### ⚠️ Branch Protection & Merge Strategy (for PR Delivery workflows)
 This delivery framework is designed to be fully "protection-aware." To function correctly across repositories with active branch rules, ensure the following requirements are met:
 
 * **Permissions**: The calling job block **must** define explicit `pull-requests: write` and `contents: write` permissions.
@@ -38,3 +50,4 @@ This delivery framework is designed to be fully "protection-aware." To function 
 ## Deprecated Workflows
 > **Note**: These workflows are no longer actively maintained or supported.
 * `build-grails-4-gradle.yml`: Replaced. Implement standard open-source `gradle/gradle-build-action` modules instead.
+* `folio-api-pipeline.yml`: Superceded. Refactored into separate modular workflows under the `folio-api-build.yml` orchestrator suite.
