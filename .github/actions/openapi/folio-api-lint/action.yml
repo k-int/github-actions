@@ -1,6 +1,6 @@
 name: 'Folio API Lint'
-description: 'Runs folio-tools api_lint.py'
 inputs:
+  working-directory: { default: '.' }
   api_types: { default: 'OAS' }
   api_directories: { default: 'openapi' }
   api_excludes: { default: '' }
@@ -13,12 +13,15 @@ runs:
       run: |
         git clone https://github.com/folio-org/folio-tools
         cd folio-tools/api-lint && yarn install && pip3 install -r requirements.txt
-    - name: Do api-lint
+
+    - name: Run Linter
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: |
         OPTION_WARNINGS=""
         if [ "${{ inputs.api_warnings }}" = "true" ]; then OPTION_WARNINGS="--warnings"; fi
-        python3 folio-tools/api-lint/api_lint.py \
+        
+        python3 $GITHUB_WORKSPACE/folio-tools/api-lint/api_lint.py \
           --loglevel info \
           --types ${{ inputs.api_types }} \
           --directories ${{ inputs.api_directories }} \

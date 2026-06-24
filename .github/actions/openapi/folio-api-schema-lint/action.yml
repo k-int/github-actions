@@ -1,6 +1,6 @@
 name: 'Folio API Schema Lint'
-description: 'Runs folio-tools api_schema_lint.py'
 inputs:
+  working-directory: { default: '.' }
   api_directories: { default: 'openapi' }
   api_excludes: { default: '' }
 runs:
@@ -11,10 +11,12 @@ runs:
       run: |
         git clone https://github.com/folio-org/folio-tools
         cd folio-tools/api-schema-lint && yarn install && pip3 install -r requirements.txt
-    - name: Do api-schema-lint
+
+    - name: Run Schema Linter
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: |
-        python3 folio-tools/api-schema-lint/api_schema_lint.py \
+        python3 $GITHUB_WORKSPACE/folio-tools/api-schema-lint/api_schema_lint.py \
           --loglevel info \
           --directories ${{ inputs.api_directories }} \
           --excludes ${{ inputs.api_excludes }}

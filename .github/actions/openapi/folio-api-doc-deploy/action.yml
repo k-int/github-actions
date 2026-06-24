@@ -1,9 +1,6 @@
 name: 'Folio API Doc & S3 Deploy'
-description: 'Generates API docs and syncs them to an AWS S3 bucket'
 inputs:
-  api_types: { default: 'OAS' }
-  api_directories: { default: 'openapi' }
-  api_excludes: { default: '' }
+  working-directory: { default: '.' }
   output_dir: { default: 'folio-api-docs' }
   s3_bucket: { default: 'foliodocs' }
   s3_folder: { default: 'api' }
@@ -18,33 +15,35 @@ runs:
       run: |
         git clone https://github.com/folio-org/folio-tools
         cd folio-tools/api-doc && yarn install && pip3 install -r requirements.txt
+
     - name: Obtain version if release tag
       shell: bash
       run: |
         if [[ "${{ github.ref }}" == refs/tags/[vV]* ]]; then
-          version=$(echo ${GITHUB_REF#refs/tags/[vV]} | awk -F'.' '{ printf("%d.%d", $1, $2) }')
-          echo "VERSION_MAJ_MIN=${version}" >> $GITHUB_ENV
+          echo "VERSION_MAJ_MIN=$(echo ${GITHUB_REF#refs/tags/[vV]} | awk -F'.' '{ printf("%d.%d", $1, $2) }')" >> $GITHUB_ENV
         fi
+
     - name: Generate Docs
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: |
         option_release=""
-        if [ -n "$VERSION_MAJ_MIN" ]; then
-          option_release="--version $VERSION_MAJ_MIN"
-        fi
-        python3 folio-tools/api-doc/api_doc.py \
+        if [ -n "$VERSION_MAJ_MIN" ]; then option_release="--version $VERSION_MAJ_MIN"; fi
+        
+        python3 $GITHUB_WORKSPACE/folio-tools/api-doc/api_doc.py \
           --loglevel info \
-          --types ${{ inputs.api_types }} \
-          --directories ${{ inputs.api_directories }} \
-          --excludes ${{ inputs.api_excludes }} \
+          --types 'OAS' \
+          --directories 'openapi' \
+          --excludes '' \
           --output ${{ inputs.output_dir }} $option_release
+
     - name: Publish to AWS S3
       uses: sai-sharan/aws-s3-sync-action@v0.1.0
       with:
         access_key: ${{ inputs.s3_access_key_id }}
         secret_access_key: ${{ inputs.s3_secret_access_key }}
         region: ${{ inputs.s3_region }}
-        source: ${{ inputs.output_dir }}
+        source: ${{ inputs.working-directory }}/${{ inputs.output_dir }}
         destination_bucket: ${{ inputs.s3_bucket }}
         destination_prefix: ${{ inputs.s3_folder }}
         delete: false
