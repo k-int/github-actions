@@ -38,7 +38,7 @@ jobs:
     needs: run-redocly-bundle
     uses: k-int/github-actions/.github/workflows/folio-api-tools-pipeline.yml@main
     with:
-      api_directories: 'built-spec'
+      api-directories: 'built-spec'
       artifact-name: 'compiled-openapi-spec'
     secrets:
       S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
