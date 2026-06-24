@@ -1,0 +1,20 @@
+name: 'Folio API Schema Lint'
+description: 'Runs folio-tools api_schema_lint.py'
+inputs:
+  api_directories: { default: 'openapi' }
+  api_excludes: { default: '' }
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare folio-tools
+      shell: bash
+      run: |
+        git clone https://github.com/folio-org/folio-tools
+        cd folio-tools/api-schema-lint && yarn install && pip3 install -r requirements.txt
+    - name: Do api-schema-lint
+      shell: bash
+      run: |
+        python3 folio-tools/api-schema-lint/api_schema_lint.py \
+          --loglevel info \
+          --directories ${{ inputs.api_directories }} \
+          --excludes ${{ inputs.api_excludes }}

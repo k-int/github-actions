@@ -1,0 +1,44 @@
+name: API Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'openapi/**'
+      - 'service/src/main/okapi/ModuleDescriptor-template.json'
+    tags:
+      - '[vV][0-9]+.[0-9]+.[0-9]+*'
+  pull_request:
+    paths:
+      - 'openapi/**'
+
+jobs:
+  openapi-tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # Task 1: Redocly Build & Bundle
+      - name: Redocly Actions
+        uses: k-int/github-actions/.github/actions/openapi/redocly-build@main
+
+      # Task 2: Folio API Lint
+      - name: Folio API Lint
+        uses: k-int/github-actions/.github/actions/openapi/folio-api-lint@main
+        with:
+          api_directories: 'openapi'
+
+      # Task 3: Folio Schema Lint (Easy to skip/remove if you don't want it!)
+      - name: Folio Schema Lint
+        uses: k-int/github-actions/.github/actions/openapi/folio-api-schema-lint@main
+
+      # Task 4: Doc Generation & S3 Upload (Only runs on push events, skipping PRs)
+      - name: Folio Doc Gen & Deploy
+        if: github.event_name == 'push'
+        uses: k-int/github-actions/.github/actions/openapi/folio-api-doc-deploy@main
+        with:
+          s3_access_key_id: ${{ secrets.S3_ACCESS_KEY_ID }}
+          s3_secret_access_key: ${{ secrets.S3_SECRET_ACCESS_KEY }}

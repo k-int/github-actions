@@ -1,0 +1,23 @@
+name: 'Redocly Lint & Bundle'
+description: 'Installs dependencies, lints, and bundles OpenAPI specs'
+inputs:
+  node-version:
+    description: 'Node version to use'
+    default: '20'
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+    - name: Run Redocly Lint
+      shell: bash
+      run: npm test
+    - name: Run Redocly Build
+      shell: bash
+      run: npm run build

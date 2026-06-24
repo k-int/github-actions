@@ -15,9 +15,16 @@ This delivery framework is designed to be fully "protection-aware." To function 
 
 * **Permissions**: The calling job block **must** define explicit `pull-requests: write` and `contents: write` permissions.
 * **Auto-Merge**:
-    * If [Auto-merge](https://github.com/en/pulls/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request) is enabled in repository settings, the workflow will automatically enqueue the generated compliance updates.
-    * If [Merge Queues](https://github.com/en/pulls/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request-with-a-merge-queue) are enabled on the destination branch, the workflow will queue the transaction automatically, bypassing direct push locks.
+  * If [Auto-merge](https://github.com/en/pulls/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request) is enabled in repository settings, the workflow will automatically enqueue the generated compliance updates.
+  * If [Merge Queues](https://github.com/en/pulls/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request-with-a-merge-queue) are enabled on the destination branch, the workflow will queue the transaction automatically, bypassing direct push locks.
 * **Fallback Rules**: If auto-merge features are completely turned off, the workflow will safely create the PR and leave a tracking timeline comment for a human maintainer to execute manual review actions.
+
+---
+
+## Folio-Specific Pipelines
+
+### [Folio OpenAPI CI/CD Pipeline](./folio-specific/folio-api-pipeline.yml)
+An end-to-end orchestration pipeline configured specifically for FOLIO modules. Automates Redocly bundling, multi- linter validations (`api-lint` and `api-schema-lint`), documentation tracking, and automated deployment syncs to AWS S3.
 
 ---
 
