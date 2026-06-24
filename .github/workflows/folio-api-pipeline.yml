@@ -7,6 +7,9 @@ on:
         type: string
         required: false
         default: "."
+      openapi-filename:
+        type: string
+        required: true
     secrets:
       S3_ACCESS_KEY_ID:
         required: true
@@ -14,54 +17,93 @@ on:
         required: true
 
 jobs:
-  # --- STAGE 1: PARALLEL LINTERS ---
-
-  redocly-lint-and-bundle:
-    name: Redocly Validate & Build
+  # --- STAGE 1: BUILD THE CONSOLIDATED SPEC ---
+  redocly-bundle:
+    name: Redocly Bundle Spec
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
       - name: Run Redocly Action
         uses: k-int/github-actions/.github/actions/openapi/redocly-build@main
         with:
           working-directory: ${{ inputs.working-directory }}
 
+      - name: Commit and Push Bundled Spec
+        shell: bash
+        run: |
+          git config --global user.name "EthanFreestone"
+          git config --global user.email "ethan.freestone@k-int.co.uk"
+          
+          # Stage the freshly generated file dynamically
+          git add ${{ inputs.working-directory }}/${{ inputs.openapi-filename }}
+          
+          # Only commit and push if the file actually changed
+          if ! git diff --cached --quiet; then
+            echo "Changes detected in spec. Committing back to branch..."
+            git commit -m "chore: auto-update bundled openapi specification [skip ci]"
+            git push
+          else
+            echo "No changes detected in ${{ inputs.openapi-filename }}. Skipping git push."
+          fi
+
+      # Isolate the bundled asset into a clean directory for artifact sharing
+      - name: Isolate Bundled Specification
+        run: |
+          mkdir -p built-spec
+          cp ${{ inputs.working-directory }}/${{ inputs.openapi-filename }} built-spec/
+
       - name: Upload Bundled Spec Artifact
         uses: actions/upload-artifact@v5
         with:
-          name: serials-management-spec
-          path: ${{ inputs.working-directory }}/serials-management.yaml
+          name: compiled-openapi-spec
+          path: built-spec/
 
+  # --- STAGE 2: PARALLEL LINTERS (RUNNING AGAINST BUNDLED SPEC) ---
   folio-api-lint:
     name: Folio API Lint
+    needs: redocly-bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
+
+      - name: Download Compiled Spec
+        uses: actions/download-artifact@v5
+        with:
+          name: compiled-openapi-spec
+          path: built-spec
+
       - name: Run Folio API Linter
         uses: k-int/github-actions/.github/actions/openapi/folio-api-lint@main
         with:
-          working-directory: ${{ inputs.working-directory }}
+          api_directories: 'built-spec'
 
   folio-schema-lint:
     name: Folio Schema Lint
+    needs: redocly-bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
+
+      - name: Download Compiled Spec
+        uses: actions/download-artifact@v5
+        with:
+          name: compiled-openapi-spec
+          path: built-spec
+
       - name: Run Folio Schema Linter
         uses: k-int/github-actions/.github/actions/openapi/folio-api-schema-lint@main
         with:
-          working-directory: ${{ inputs.working-directory }}
+          api_directories: 'built-spec'
 
-
-  # --- STAGE 2: DEPENDENT DEPLOYMENT ---
-
+  # --- STAGE 3: DOC GENERATION & DEPLOYMENT ---
   folio-docs-deploy:
     name: Folio Doc Gen & S3 Deploy
-    needs: [redocly-lint-and-bundle, folio-api-lint, folio-schema-lint]
+    needs: [redocly-bundle, folio-api-lint, folio-schema-lint]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -69,9 +111,16 @@ jobs:
         with:
           ref: ${{ github.ref }}
           submodules: recursive
+
+      - name: Download Compiled Spec
+        uses: actions/download-artifact@v5
+        with:
+          name: compiled-openapi-spec
+          path: built-spec
+
       - name: Run Folio Deployment Action
         uses: k-int/github-actions/.github/actions/openapi/folio-api-doc-deploy@main
         with:
-          working-directory: ${{ inputs.working-directory }}
+          api_directories: 'built-spec'
           s3_access_key_id: ${{ secrets.S3_ACCESS_KEY_ID }}
           s3_secret_access_key: ${{ secrets.S3_SECRET_ACCESS_KEY }}

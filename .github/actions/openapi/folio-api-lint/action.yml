@@ -1,8 +1,7 @@
 name: 'Folio API Lint'
 inputs:
-  working-directory: { default: '.' }
   api_types: { default: 'OAS' }
-  api_directories: { default: 'openapi' }
+  api_directories: { default: 'built-spec' } # Overridable input
   api_excludes: { default: '' }
   api_warnings: { default: 'false' }
 runs:
@@ -16,7 +15,6 @@ runs:
 
     - name: Run Linter
       shell: bash
-      working-directory: ${{ inputs.working-directory }}
       run: |
         OPTION_WARNINGS=""
         if [ "${{ inputs.api_warnings }}" = "true" ]; then OPTION_WARNINGS="--warnings"; fi
