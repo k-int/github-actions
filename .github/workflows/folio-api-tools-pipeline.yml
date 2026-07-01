@@ -3,14 +3,20 @@ name: Folio API Tools Pipeline
 on:
   workflow_call:
     inputs:
-      api-directories:
+      spec-dir:
         type: string
-        required: false
-        default: "openapi"
+        required: true
+        description: "A dedicated directory containing ONLY target openapi spec files (e.g., docs/API/yamls)"
       artifact-name:
         type: string
         required: false
         default: ""
+        description: "Optional artifact name to download directly into spec-dir"
+      allowed-deploy-branch:
+        type: string
+        required: false
+        default: "main master"
+        description: "Space-separated list of branches allowed to deploy to S3. Supports direct push branch names or active PR source branches (e.g., 'ci/openapi-tweak')"
     secrets:
       S3_ACCESS_KEY_ID:
         required: true
@@ -26,17 +32,17 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Download Compiled Spec
+      - name: Download Compiled Spec (Optional)
         if: inputs.artifact-name != ''
         uses: actions/download-artifact@v5
         with:
           name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.api-directories }}
+          path: ${{ inputs.spec-dir }}
 
       - name: Run Folio API Linter
         uses: k-int/github-actions/.github/actions/openapi/folio-api-lint@main
         with:
-          api_directories: ${{ inputs.api-directories }}
+          api_directories: ${{ inputs.spec-dir }}
 
   folio-schema-lint:
     name: Folio Schema Lint
@@ -46,22 +52,29 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Download Compiled Spec
+      - name: Download Compiled Spec (Optional)
         if: inputs.artifact-name != ''
         uses: actions/download-artifact@v5
         with:
           name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.api-directories }}
+          path: ${{ inputs.spec-dir }}
 
       - name: Run Folio Schema Linter
         uses: k-int/github-actions/.github/actions/openapi/folio-api-schema-lint@main
         with:
-          api_directories: ${{ inputs.api-directories }}
+          api_directories: ${{ inputs.spec-dir }}
 
   folio-docs-deploy:
     name: Folio Doc Gen & S3 Deploy
     needs: [folio-api-lint, folio-schema-lint]
-    if: github.event_name == 'push'
+    if: |
+      (
+        github.event_name == 'push' &&
+        contains(inputs.allowed-deploy-branch, github.ref_name)
+      ) || (
+        github.event_name == 'pull_request' &&
+        contains(inputs.allowed-deploy-branch, github.event.pull_request.head.ref)
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -69,16 +82,16 @@ jobs:
           ref: ${{ github.ref }}
           submodules: recursive
 
-      - name: Download Compiled Spec
+      - name: Download Compiled Spec (Optional)
         if: inputs.artifact-name != ''
         uses: actions/download-artifact@v5
         with:
           name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.api-directories }}
+          path: ${{ inputs.spec-dir }}
 
       - name: Run Folio Deployment Action
         uses: k-int/github-actions/.github/actions/openapi/folio-api-doc-deploy@main
         with:
-          api_directories: ${{ inputs.api-directories }}
+          api_directories: ${{ inputs.spec-dir }}
           s3_access_key_id: ${{ secrets.S3_ACCESS_KEY_ID }}
           s3_secret_access_key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
