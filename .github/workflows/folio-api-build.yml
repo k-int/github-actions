@@ -33,7 +33,7 @@ on:
 jobs:
   run-redocly-bundle:
     name: Redocly compilation stage
-    uses: k-int/github-actions/.github/workflows/redocly-build.yml@test
+    uses: k-int/github-actions/.github/workflows/redocly-build.yml@main
     with:
       redocly-dir: ${{ inputs.redocly-dir }}
       spec-dir: ${{ inputs.spec-dir }}
@@ -46,7 +46,7 @@ jobs:
   run-folio-toolchain:
     name: Folio toolchain stage
     needs: run-redocly-bundle
-    uses: k-int/github-actions/.github/workflows/folio-api-tools-pipeline.yml@test
+    uses: k-int/github-actions/.github/workflows/folio-api-tools-pipeline.yml@main
     with:
       spec-dir: ${{ inputs.spec-dir }}
       artifact-name: 'open-api-spec'
