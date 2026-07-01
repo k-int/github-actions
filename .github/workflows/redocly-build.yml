@@ -3,13 +3,22 @@ name: Redocly Build & Push
 on:
   workflow_call:
     inputs:
-      working-directory:
+      redocly-dir:
         type: string
-        required: false
-        default: "."
+        required: true
+        description: "Directory containing the package.json and Redocly setup (e.g., docs/API/config)"
+      spec-dir:
+        type: string
+        required: true
+        description: "Dedicated directory where specs reside (e.g., docs/API/yamls)"
       openapi-filename:
         type: string
         required: true
+        description: "The name of the compiled master spec file (e.g., agreements.yaml)"
+      artifact-name:
+        type: string
+        required: false
+        default: ""
     secrets:
       GITLAB_DEPLOY_USER:
         required: true
@@ -30,24 +39,20 @@ jobs:
       - name: Run Redocly action
         uses: k-int/github-actions/.github/actions/openapi/redocly-build@main
         with:
-          working-directory: ${{ inputs.working-directory }}
+          working-directory: ${{ inputs.redocly-dir }}
 
       - name: Auto-commit bundled specification
         if: github.event_name == 'pull_request'
         uses: k-int/github-actions/.github/actions/commit-directly@main
         with:
-          tracked_files: "${{ inputs.working-directory }}/${{ inputs.openapi-filename }}"
+          tracked_files: "${{ inputs.spec-dir }}/${{ inputs.openapi-filename }}"
           commit_message: "chore: auto-update bundled openapi specification"
           deploy_user: ${{ secrets.GITLAB_DEPLOY_USER }}
           deploy_token: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
 
-      - name: Isolate bundled specification
-        run: |
-          mkdir -p built-spec
-          cp ${{ inputs.working-directory }}/${{ inputs.openapi-filename }} built-spec/
-
-      - name: Upload bundled spec artifact
+      - name: Upload bundled spec directory artifact
+        if: inputs.artifact-name != ''
         uses: actions/upload-artifact@v5
         with:
-          name: compiled-openapi-spec
-          path: built-spec/
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.spec-dir }}/
