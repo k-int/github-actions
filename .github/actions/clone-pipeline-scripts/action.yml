@@ -1,5 +1,5 @@
 name: 'Clone pipeline scripts'
-description: 'Shallow-clones the shared-pipeline-scripts vault into ./pipeline-scripts'
+description: 'Shallow-clones the shared-pipeline-scripts vault into a specified directory context'
 inputs:
   deploy_user:
     description: 'GitLab deployment username'
@@ -11,11 +11,21 @@ inputs:
     description: 'Branch to clone from GitLab'
     required: false
     default: 'main'
+  dest_dir:
+    description: 'Target workspace folder path destination'
+    required: false
+    default: 'pipeline-scripts'
+
 runs:
   using: "composite"
   steps:
-    - name: Fetch Shared Pipeline Scripts (Shallow Clone)
-      shell: bash
-      run: |
-        git clone --depth 1 --single-branch --branch ${{ inputs.branch }} \
-        https://${{ inputs.deploy_user }}:${{ inputs.deploy_token }}@gitlab.com/knowledge-integration/pipeline-utils/shared-pipeline-scripts.git pipeline-scripts
+    - name: Fetch shared pipeline scripts
+      uses: k-int/github-actions/.github/actions/clone@test
+      with:
+        provider: "gitlab"
+        repo: "knowledge-integration/pipeline-utils/shared-pipeline-scripts"
+        ref: "${{ inputs.branch }}"
+        dest_dir: "${{ inputs.dest_dir }}"
+        depth: "1"
+        deploy_user: "${{ inputs.deploy_user }}"
+        deploy_token: "${{ inputs.deploy_token }}"
