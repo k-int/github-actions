@@ -135,3 +135,79 @@ This repository uses an automated git mirror strategy managed via our `.gitlab-c
 ### 2. The Cross-Org Secret Mapping Rule
 
 Because downstream repositories (e.g., living in the `folio-org` organization namespace) consume these workflows out of our `k-int` space, **`secrets: inherit` will silently fail**. When writing user documentation for your new workflow, explicitly instruct developers that they must pass the context variables directly via the `secrets:` block on their implementation call.
+
+## 🧪 Testing & Branch Management Workflow
+
+Because this repository acts as a core infrastructure dependency for the entire organization, changes must be validated safely before hitting production.
+
+To facilitate this, both the `main` and `test` branches are automatically mirrored from GitLab to GitHub (`k-int/github-actions`). **The `test` branch must always exist on both platforms; if it is deleted or missing, downstream pipelines targeting it will instantly break.**
+
+When modifying workflows, developing new features, or fixing bugs, you must follow this strict development lifecycle:
+
+### The 5-Step Pipeline Lifecycle
+
+| Step | Phase | Action | Target Branch |
+| :--- | :--- | :--- | :--- |
+| **1** | **Isolate** | Commit and push your workflow updates to the upstream **GitLab** `test` branch. | `test` |
+| **2** | **Target** | Point a consumer test application to the `@test` tag of the reusable blueprint. | `test` |
+| **3** | **Verify** | Execute the consumer pipeline, check the visual UI layout, and verify script execution. | `test` |
+| **4** | **Promote** | Open a Merge Request (MR) from `test` to `main` inside GitLab and merge it. | `main` |
+| **5** | **Sync** | Reset/Fast-forward the `test` branch to the new **TIP** of `main` to prepare for the next change. | `test` |
+
+---
+
+### Step-by-Step Implementation Guide
+
+#### 1. Push to GitLab Test
+Make your structural changes or update your script definitions in the upstream GitLab repository on the `test` branch. Wait a moment for the mirror engine to push the updates to GitHub.
+
+#### 2. Configure a Consumer App for Testing
+In your target application repository (or a scratch testing repo), modify your workflow file to point explicitly to the `@test` branch version of the reusable orchestrator:
+
+```yaml
+name: Application CI - Sandbox Testing
+
+on:
+  workflow_dispatch: # Allowed for easy manual triggering during tests
+
+jobs:
+  core-pipeline:
+    # 💥 CRITICAL: Target the @test branch instead of @main
+    uses: k-int/github-actions/.github/workflows/hello-world.yml@test
+    
+    secrets:
+      GITLAB_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
+      GITLAB_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+```
+
+Trigger this workflow manually via the GitHub Actions UI to verify that your new logic behaves exactly as expected.
+
+#### 3. Promote to Production (`main`)
+Once your validation passes completely:
+1. Navigate to **GitLab**.
+2. Open a Merge Request from `test` ➔ `main`.
+3. Complete the code review process and **Merge**.
+4. The mirror engine will immediately push `main` to GitHub, making your changes live for all production consumers.
+
+#### 4. Refresh the Test Branch
+To prevent code drift and ensure the next developer starts from a clean slate, you **must** fast-forward the `test` branch to match the production tip immediately after merging.
+
+Run the following commands in your local terminal (configured to your GitLab upstream remote):
+
+```bash
+# Fetch the latest changes from upstream
+git fetch origin
+
+# Switch to main and pull the merged changes
+git checkout main
+git pull origin main
+
+# Force-reset test to the exact state of main
+git checkout test
+git reset --hard main
+
+# Push the synchronized test branch back upstream
+git push origin test --force
+```
+
+> ⚠️ **CRITICAL WARNING:** Always coordinate with your team before executing a `--force` push to the `test` branch to ensure you do not overwrite another engineer's active pipeline testing session.

@@ -1,0 +1,75 @@
+name: 'Repository Clone'
+description: 'Clones full target source trees from either GitHub or GitLab directly into your runner execution workspace.'
+inputs:
+  provider:
+    description: "Target platform provider ecosystem: 'github' or 'gitlab'."
+    required: true
+  repo:
+    description: "The target repository identifier. For GitHub, use 'owner/repo' format. For GitLab, use the internal path layout ('group/subgroup/repo')."
+    required: true
+  ref:
+    description: 'Target branch name, tag, or explicit commit SHA tracking reference.'
+    required: false
+    default: 'main'
+  dest_dir:
+    description: 'Local runner workspace directory path where the codebase will be cloned.'
+    required: true
+  depth:
+    description: 'Commit history layer allocation depth limit.'
+    required: false
+    default: '1'
+  deploy_user:
+    description: 'GitLab deployment username'
+    required: false
+  deploy_token:
+    description: 'GitLab deployment token'
+    required: false
+  core_tooling_dir:
+    description: 'Local directory path where the core routing logic scripts are isolated.'
+    required: false
+    default: '.core-tooling/clone'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Bootstrap Shared Utility Ingestion Scripts
+      shell: bash
+      run: |
+        if [ ! -d "${{ inputs.core_tooling_dir }}" ]; then
+          echo "📥 Bootstrapping shared utility script components out of central GitLab vault..."
+          TOKEN="${{ inputs.deploy_token || env.GITLAB_TOKEN || env.GITLAB_DEPLOY_TOKEN }}"
+          USER="${{ inputs.deploy_user || env.GITLAB_DEPLOY_USER || 'oauth2' }}"
+        
+          URL="https://gitlab.com/knowledge-integration/pipeline-utils/shared-pipeline-scripts.git"
+          [ -n "$TOKEN" ] && URL="https://${USER}:${TOKEN}@gitlab.com/knowledge-integration/pipeline-utils/shared-pipeline-scripts.git"
+        
+          git clone --depth 1 --single-branch --branch main "$URL" "${{ inputs.core_tooling_dir }}"
+        else
+          echo "ℹ️ Shared utility scripts already cached in workspace. Skipping bootstrap clone."
+        fi
+
+    - name: Execute Toolchain Routing Engine
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.deploy_token || env.GH_TOKEN }}
+      run: |
+        chmod +x ./${{ inputs.core_tooling_dir }}/delivery/github/clone.sh ./${{ inputs.core_tooling_dir }}/delivery/gitlab/clone.sh
+        
+        if [ "${{ inputs.provider }}" = "github" ]; then
+          ./${{ inputs.core_tooling_dir }}/delivery/github/clone.sh \
+            --repo "${{ inputs.repo }}" \
+            --ref "${{ inputs.ref }}" \
+            --dest-dir "${{ inputs.dest_dir }}" \
+            --depth "${{ inputs.depth }}"
+        elif [ "${{ inputs.provider }}" = "gitlab" ]; then
+          ./${{ inputs.core_tooling_dir }}/delivery/gitlab/clone.sh \
+            --project-path "${{ inputs.repo }}" \
+            --ref "${{ inputs.ref }}" \
+            --dest-dir "${{ inputs.dest_dir }}" \
+            --depth "${{ inputs.depth }}" \
+            --gitlab-token "${{ inputs.deploy_token }}" \
+            --username "${{ inputs.deploy_user }}"
+        else
+          echo "❌ Error: Invalid provider selection: '${{ inputs.provider }}'"
+          exit 1
+        fi

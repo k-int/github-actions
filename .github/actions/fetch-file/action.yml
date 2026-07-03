@@ -1,0 +1,67 @@
+name: 'File Fetch'
+description: 'Ingests a singular target asset file from a remote GitHub or GitLab repository path.'
+inputs:
+  provider:
+    description: "Target platform provider ecosystem: 'github' or 'gitlab'."
+    required: true
+  repo:
+    description: "The target repository identifier. For GitHub, use 'owner/repo' format. For GitLab, use the internal path layout ('group/subgroup/repo')."
+    required: true
+  ref:
+    description: 'Target branch name, tag, or explicit commit SHA tracking reference.'
+    required: false
+    default: 'main'
+  source_path:
+    description: 'Relative resource pathway mapping inside the target remote repository space.'
+    required: true
+  output_file:
+    description: 'The localized target file name or folder pathway destination string for storage.'
+    required: true
+  deploy_user:
+    description: 'GitLab deployment username'
+    required: false
+  deploy_token:
+    description: 'GitLab deployment token'
+    required: false
+  core_tooling_dir:
+    description: 'Local directory path where the core routing logic scripts are isolated.'
+    required: false
+    default: '.core-tooling/fetch-file'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Bootstrap Shared Utility Ingestion Scripts
+      if: hashFiles(format('{0}/delivery/**/*', inputs.core_tooling_dir)) == ''
+      uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@test
+      with:
+        deploy_user: ${{ inputs.deploy_user }}
+        deploy_token: ${{ inputs.deploy_token }}
+        branch: "main"
+        dest_dir: "${{ inputs.core_tooling_dir }}"
+
+    - name: Execute Toolchain Routing Engine
+      shell: bash
+      env:
+        GH_TOKEN: ${{ env.GH_TOKEN }}
+      run: |
+        chmod +x ./${{ inputs.core_tooling_dir }}/delivery/github/fetch-file.sh ./${{ inputs.core_tooling_dir }}/delivery/gitlab/fetch-file.sh
+        
+        if [ "${{ inputs.provider }}" = "github" ]; then
+          ./${{ inputs.core_tooling_dir }}/delivery/github/fetch-file.sh \
+            --repo "${{ inputs.repo }}" \
+            --ref "${{ inputs.ref }}" \
+            --source-path "${{ inputs.source_path }}" \
+            --output-file "${{ inputs.output_file }}"
+        elif [ "${{ inputs.provider }}" = "gitlab" ]; then
+          ./${{ inputs.core_tooling_dir }}/delivery/gitlab/fetch-file.sh \
+            --project-path "${{ inputs.repo }}" \
+            --ref "${{ inputs.ref }}" \
+            --source-path "${{ inputs.source_path }}" \
+            --output-file "${{ inputs.output_file }}" \
+            --gitlab-token "${{ inputs.deploy_token }}" \
+            --username "${{ inputs.deploy_user }}"
+        else
+          echo "❌ Error: Invalid provider selection: '${{ inputs.provider }}'"
+          exit 1
+        fi
