@@ -33,7 +33,7 @@ runs:
   steps:
     - name: Bootstrap Shared Utility Ingestion Scripts
       if: hashFiles(format('{0}/delivery/**/*', inputs.core_tooling_dir)) == ''
-      uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@test
+      uses: k-int/github-actions/.github/actions/clone-pipeline-scripts@main
       with:
         deploy_user: ${{ inputs.deploy_user }}
         deploy_token: ${{ inputs.deploy_token }}

@@ -20,7 +20,7 @@ runs:
   using: "composite"
   steps:
     - name: Fetch shared pipeline scripts
-      uses: k-int/github-actions/.github/actions/clone@test
+      uses: k-int/github-actions/.github/actions/clone@main
       with:
         provider: "gitlab"
         repo: "knowledge-integration/pipeline-utils/shared-pipeline-scripts"
